@@ -4,12 +4,14 @@ import pickle
 import shutil
 import time
 from functools import partial
-
 import fire
 import numpy as np
 import torch
 from google.protobuf import text_format
 from tensorboardX import SummaryWriter
+
+import sys
+sys.path.append('/datadrive/sec.pytorch')
 
 import torchplus
 import second.data.kitti_common as kitti
@@ -21,6 +23,14 @@ from second.pytorch.builder import (box_coder_builder, input_reader_builder,
                                       second_builder)
 from second.utils.eval import get_coco_eval_result, get_official_eval_result
 from second.utils.progress_bar import ProgressBar
+
+#for jupyter
+import re
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from IPython import get_ipython
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 def _get_pos_neg_loss(cls_loss, labels):
@@ -83,6 +93,32 @@ def example_convert_to_torch(example, dtype=torch.float32,
     return example_torch
 
 
+def on_epoch_end(metrics_str_list):
+    #path = '/datadrive/sec.pytorch/metrics.csv'
+    step = metrics_str_list[0]
+    cls_loss = metrics_str_list[2]
+    loc_loss = metrics_str_list[4]
+    get_num = '\w=(\d*[.]?\d*)'
+    
+    step = re.findall(get_num, step)
+    loc_loss = re.findall(get_num, loc_loss)
+    cls_loss = re.findall(get_num, cls_loss)
+    # with open(path,mode='a') as f:
+    #     if step==50:
+    #         f.write('step,cls_loss,loc_loss'+'\n')
+    #     f.write(step+','+cls_loss+','+loc_loss+'\n')
+    if step==200:
+        plt.ion()
+    list_step.append(step)
+    list_cls_loss.append(cls_loss)
+    list_loc_loss.append(loc_loss)
+    #plt.scatter(step, cls_loss, label = 'cls_loss')
+    plt.scatter(list_step, list_cls_loss, label='cls_loss')
+    plt.scatter(list_step, list_loc_loss, label = 'loc_loss')
+    plt.pause(0.05)
+    if step==296960:
+        plt.ioff()
+        
 def train(config_path,
           model_dir,
           result_path=None,
@@ -90,6 +126,7 @@ def train(config_path,
           display_step=50,
           summary_step=5,
           pickle_result=True):
+
     """train a VoxelNet model specified by a config file.
     """
     if create_folder:
@@ -327,8 +364,10 @@ def train(config_path,
                         else:
                             metrics_str_list.append(f"{k}={v}")
                     log_str = ', '.join(metrics_str_list)
+                    on_epoch_end(metrics_str_list)
                     print(log_str, file=logf)
                     print(log_str)
+                    
                 ckpt_elasped_time = time.time() - ckpt_start_time
                 if ckpt_elasped_time > train_cfg.save_checkpoints_secs:
                     torchplus.train.save_models(model_dir, [net, optimizer],
@@ -656,4 +695,8 @@ def evaluate(config_path,
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    #    fire.Fire()
+    list_step=[]
+    list_cls_loss=[]
+    list_loc_loss=[]
+    train('/datadrive/sec.pytorch/second/configs/pointpillars/car/xyres_16.proto', '/datadrive/path/to/model_dir')
