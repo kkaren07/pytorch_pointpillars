@@ -11,6 +11,8 @@ This is not an official nuTonomy codebase, but it can be used to match the publi
 
 ![Example Results](https://raw.githubusercontent.com/nutonomy/second.pytorch/master/images/pointpillars_kitti_results.png)
 
+## Environment
+Fix dockerfile
 
 ## Getting Started
 
